@@ -1,0 +1,38 @@
+{
+  "return_policy": {
+    "title": "Returns & Exchanges Policy",
+    "rules": [
+      "Items can be returned within 30 days of delivery for a full refund.",
+      "Items must be unused, unwashed, and in original packaging with all tags attached.",
+      "To initiate a return, contact support with your order ID and reason for return.",
+      "Refunds are processed within 5–7 business days after the returned item is received.",
+      "Exchange requests must be submitted within 14 days of delivery.",
+      "Non-returnable items: digital downloads, personalized products, perishable goods, and items marked Final Sale.",
+      "Return shipping is free for defective or incorrect items; for change-of-mind returns, the customer covers return shipping."
+    ]
+  },
+  "shipping": {
+    "title": "Shipping & Logistics",
+    "rules": [
+      "Standard shipping: 5–7 business days. Express shipping: 2–3 business days. Same-day delivery available in select cities.",
+      "Free standard shipping on all orders over $50.",
+      "Orders are processed within 1–2 business days after payment is confirmed.",
+      "A tracking number is sent by email once the order ships.",
+      "International shipping is available to 30+ countries; duties and taxes are the buyer's responsibility.",
+      "For lost or significantly delayed packages, contact support with your order ID — we investigate within 48 hours.",
+      "Delivery to P.O. Boxes is supported via USPS only."
+    ]
+  },
+  "coupons": {
+    "title": "Coupons & Promotions",
+    "rules": [
+      "Only one coupon code can be applied per order. Coupons cannot be stacked or combined.",
+      "Coupons expire on the date displayed and cannot be reactivated or extended after expiry.",
+      "Most coupons apply to regular-priced items only and are not valid on sale or clearance items.",
+      "Some coupons require a minimum order value as stated in the coupon terms.",
+      "Referral credits are valid for 90 days from the date issued.",
+      "Coupon discounts are applied before taxes and shipping fees.",
+      "Coupons have no cash value and cannot be transferred or resold."
+    ]
+  }
+}
