@@ -1,9 +1,11 @@
 require('dotenv').config()
+const path = require('path')
 const express = require('express')
 const cors = require('cors')
 const Anthropic = require('@anthropic-ai/sdk').default
 const orders = require('./data/orders')
 const kb = require('./data/knowledge-base.json')
+const { saveMessage, getHistory, getAdminStats, getRecentSessions } = require('./database')
 
 const app = express()
 app.use(cors())
@@ -72,6 +74,21 @@ app.get('/api/orders', (_req, res) => {
   res.json(orders)
 })
 
+// ── GET /api/history/:sessionId ───────────────────────────────────────────────
+app.get('/api/history/:sessionId', (req, res) => {
+  res.json(getHistory(req.params.sessionId))
+})
+
+// ── GET /api/admin/stats ──────────────────────────────────────────────────────
+app.get('/api/admin/stats', (_req, res) => {
+  res.json(getAdminStats())
+})
+
+// ── GET /api/admin/sessions ───────────────────────────────────────────────────
+app.get('/api/admin/sessions', (_req, res) => {
+  res.json(getRecentSessions())
+})
+
 // ── Transfer detection ────────────────────────────────────────────────────────
 const USER_TRANSFER_TRIGGERS = [
   '转人工', '联系客服', '人工客服', '真人客服',
@@ -100,10 +117,18 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'sessionId and message are required' })
   }
 
-  // Retrieve or create this session's history
+  // Restore context from DB if this session isn't in memory (e.g. after server restart)
+  if (!sessionStore.has(sessionId)) {
+    const rows = getHistory(sessionId)
+    if (rows.length > 0) {
+      const restored = rows.map((r) => ({ role: r.role, content: r.content }))
+      sessionStore.set(sessionId, restored.slice(-MAX_HISTORY))
+    }
+  }
   const history = sessionStore.get(sessionId) ?? []
 
-  // Append the new user turn
+  // Persist the user message, then append to in-memory history
+  saveMessage(sessionId, 'user', message)
   history.push({ role: 'user', content: message })
 
   try {
@@ -157,12 +182,14 @@ app.post('/api/chat', async (req, res) => {
       reply = textBlock?.text ?? ''
 
       // Store Claude's final reply as a plain string to keep history clean
+      saveMessage(sessionId, 'assistant', reply)
       history.push({ role: 'assistant', content: reply })
     } else {
       // ── Normal turn, no tool call ─────────────────────────────────────────
       const textBlock = round1.content.find((b) => b.type === 'text')
       reply = textBlock?.text ?? ''
 
+      saveMessage(sessionId, 'assistant', reply)
       history.push({ role: 'assistant', content: reply })
     }
 
@@ -185,7 +212,15 @@ app.post('/api/chat', async (req, res) => {
   }
 })
 
+// ── Serve frontend in production ─────────────────────────────────────────────
+const frontendDist = path.join(__dirname, '../frontend/dist')
+app.use(express.static(frontendDist))
+// SPA fallback: serve index.html for any non-API route
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'))
+})
+
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`)
+  console.log(`Server running on http://localhost:${PORT}`)
 })
