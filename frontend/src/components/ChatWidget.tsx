@@ -224,16 +224,21 @@ function MessageBubble({
   )
 }
 
-function TypingIndicator() {
+function TypingIndicator({ slow }: { slow: boolean }) {
   return (
     <div className="flex items-start gap-2.5">
       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0 mt-0.5 shadow-sm">
         Y
       </div>
-      <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
+      <div className="space-y-1.5">
+        <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
+        </div>
+        {slow && (
+          <p className="text-[11px] text-gray-400 pl-1">Taking a bit longer than usual…</p>
+        )}
       </div>
     </div>
   )
@@ -244,6 +249,7 @@ export default function ChatWidget({ open, onOpenChange }: ChatWidgetProps) {
   const [messages, setMessages] = useState<Message[]>(INITIAL_DISPLAY)
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
+  const [slowResponse, setSlowResponse] = useState(false)
   const [dismissedTransfers, setDismissedTransfers] = useState<Set<number>>(new Set())
   const [showRating, setShowRating] = useState(false)
 
@@ -311,6 +317,9 @@ export default function ChatWidget({ open, onOpenChange }: ChatWidgetProps) {
     setMessages((prev) => [...prev, { id: Date.now(), text, sender: 'user', time: fmt() }])
     setInput('')
     setTyping(true)
+    setSlowResponse(false)
+
+    const slowTimer = setTimeout(() => setSlowResponse(true), 5000)
 
     try {
       const res = await fetch('/api/chat', {
@@ -331,13 +340,19 @@ export default function ChatWidget({ open, onOpenChange }: ChatWidgetProps) {
       ])
 
       if (thankYou && !ratingSubmitted.current) triggerRating(() => {})
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : 'Something went wrong'
+    } catch {
       setMessages((prev) => [
         ...prev,
-        { id: Date.now() + 1, text: `Error: ${errMsg}`, sender: 'ai', time: fmt() },
+        {
+          id: Date.now() + 1,
+          text: "Sorry, I'm having trouble connecting right now. Please try again in a moment.",
+          sender: 'ai',
+          time: fmt(),
+        },
       ])
     } finally {
+      clearTimeout(slowTimer)
+      setSlowResponse(false)
       setTyping(false)
     }
   }
@@ -352,7 +367,7 @@ export default function ChatWidget({ open, onOpenChange }: ChatWidgetProps) {
   return (
     <>
       {open && (
-        <div className="fixed bottom-24 right-6 w-[380px] h-[600px] bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.18)] flex flex-col overflow-hidden z-50">
+        <div className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 w-[calc(100vw-2rem)] sm:w-[380px] h-[calc(100svh-6rem)] sm:h-[600px] bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.18)] flex flex-col overflow-hidden z-50">
           {showRating && <RatingModal onDone={handleRatingDone} />}
 
           {/* Header */}
@@ -411,7 +426,7 @@ export default function ChatWidget({ open, onOpenChange }: ChatWidgetProps) {
               />
             ))}
 
-            {typing && <TypingIndicator />}
+            {typing && <TypingIndicator slow={slowResponse} />}
             <div ref={bottomRef} />
           </div>
 
@@ -462,7 +477,7 @@ export default function ChatWidget({ open, onOpenChange }: ChatWidgetProps) {
       {/* Floating bubble */}
       <button
         onClick={() => onOpenChange(!open)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-[#1a1a2e] hover:bg-[#2d2d4e] text-white rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex items-center justify-center z-50 transition-all duration-200 border-0 p-0"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-14 h-14 bg-[#1a1a2e] hover:bg-[#2d2d4e] text-white rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex items-center justify-center z-50 transition-all duration-200 border-0 p-0"
       >
         {open ? (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
