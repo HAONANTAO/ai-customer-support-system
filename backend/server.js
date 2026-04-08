@@ -5,11 +5,15 @@ const cors = require('cors')
 const Anthropic = require('@anthropic-ai/sdk').default
 const orders = require('./data/orders')
 const kb = require('./data/knowledge-base.json')
-const { saveMessage, getHistory, getAdminStats, getRecentSessions } = require('./database')
+const { saveMessage, getHistory, getHistoryAdmin, getAdminStats, getRecentSessions } = require('./database')
+const authMiddleware = require('./auth')
 
 const app = express()
 app.use(cors())
 app.use(express.json())
+
+// ── Auth routes ───────────────────────────────────────────────────────────────
+app.use('/api/auth', require('./routes/auth'))
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -74,9 +78,14 @@ app.get('/api/orders', (_req, res) => {
   res.json(orders)
 })
 
-// ── GET /api/history/:sessionId ───────────────────────────────────────────────
-app.get('/api/history/:sessionId', (req, res) => {
-  res.json(getHistory(req.params.sessionId))
+// ── GET /api/history/:sessionId (requires auth) ───────────────────────────────
+app.get('/api/history/:sessionId', authMiddleware, (req, res) => {
+  res.json(getHistory(req.params.sessionId, req.user.id))
+})
+
+// ── GET /api/admin/history/:sessionId (admin, no user filter) ────────────────
+app.get('/api/admin/history/:sessionId', (req, res) => {
+  res.json(getHistoryAdmin(req.params.sessionId))
 })
 
 // ── GET /api/admin/stats ──────────────────────────────────────────────────────
@@ -109,9 +118,10 @@ function detectTransfer(userMessage, aiReply) {
   )
 }
 
-// ── POST /api/chat ────────────────────────────────────────────────────────────
-app.post('/api/chat', async (req, res) => {
+// ── POST /api/chat (requires auth) ───────────────────────────────────────────
+app.post('/api/chat', authMiddleware, async (req, res) => {
   const { sessionId, message } = req.body
+  const userId = req.user.id
 
   if (!sessionId || typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({ error: 'sessionId and message are required' })
@@ -128,7 +138,7 @@ app.post('/api/chat', async (req, res) => {
   const history = sessionStore.get(sessionId) ?? []
 
   // Persist the user message, then append to in-memory history
-  saveMessage(sessionId, 'user', message)
+  saveMessage(sessionId, 'user', message, userId)
   history.push({ role: 'user', content: message })
 
   try {
@@ -182,14 +192,14 @@ app.post('/api/chat', async (req, res) => {
       reply = textBlock?.text ?? ''
 
       // Store Claude's final reply as a plain string to keep history clean
-      saveMessage(sessionId, 'assistant', reply)
+      saveMessage(sessionId, 'assistant', reply, userId)
       history.push({ role: 'assistant', content: reply })
     } else {
       // ── Normal turn, no tool call ─────────────────────────────────────────
       const textBlock = round1.content.find((b) => b.type === 'text')
       reply = textBlock?.text ?? ''
 
-      saveMessage(sessionId, 'assistant', reply)
+      saveMessage(sessionId, 'assistant', reply, userId)
       history.push({ role: 'assistant', content: reply })
     }
 

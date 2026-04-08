@@ -23,6 +23,8 @@ interface Message {
 interface ChatWidgetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  token: string
+  onUnauthorized: () => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -245,7 +247,7 @@ function TypingIndicator({ slow }: { slow: boolean }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function ChatWidget({ open, onOpenChange }: ChatWidgetProps) {
+export default function ChatWidget({ open, onOpenChange, token, onUnauthorized }: ChatWidgetProps) {
   const [messages, setMessages] = useState<Message[]>(INITIAL_DISPLAY)
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
@@ -265,7 +267,9 @@ export default function ChatWidget({ open, onOpenChange }: ChatWidgetProps) {
   useEffect(() => {
     if (open && !historyFetched.current) {
       historyFetched.current = true
-      fetch(`/api/history/${sessionId.current}`)
+      fetch(`/api/history/${sessionId.current}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
         .then((r) => r.json())
         .then((rows: { role: string; content: string; timestamp: string }[]) => {
           const msgs: Message[] = rows.map((row, i) => ({
@@ -324,9 +328,16 @@ export default function ChatWidget({ open, onOpenChange }: ChatWidgetProps) {
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ sessionId: sessionId.current, message: text }),
       })
+      if (res.status === 401) {
+        onUnauthorized()
+        return
+      }
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Request failed')
 

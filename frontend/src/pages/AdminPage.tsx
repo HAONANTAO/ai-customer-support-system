@@ -115,7 +115,7 @@ export default function AdminPage({ onNavigate }: { onNavigate: (path: string) =
     setExpanded(sessionId)
     if (!threads[sessionId]) {
       const rows: HistoryRow[] = await fetch(
-        `/api/history/${sessionId}`
+        `/api/admin/history/${sessionId}`
       ).then((r) => r.json())
       setThreads((prev) => ({ ...prev, [sessionId]: rows }))
     }

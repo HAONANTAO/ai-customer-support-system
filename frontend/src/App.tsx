@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import ChatWidget from './components/ChatWidget'
 import AdminPage from './pages/AdminPage'
+import AuthPage from './pages/AuthPage'
+
+const AUTH_TOKEN_KEY = 'auth_token'
 
 // ── Feature card data ─────────────────────────────────────────────────────────
 const FEATURES = [
@@ -44,10 +47,22 @@ const TECH = [
 ]
 
 export default function App() {
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem(AUTH_TOKEN_KEY))
   const [chatOpen, setChatOpen] = useState(false)
   const [page, setPage] = useState(() =>
     window.location.pathname === '/admin' ? 'admin' : 'home'
   )
+
+  function handleLogin(newToken: string) {
+    localStorage.setItem(AUTH_TOKEN_KEY, newToken)
+    setToken(newToken)
+  }
+
+  function handleLogout() {
+    localStorage.removeItem(AUTH_TOKEN_KEY)
+    setToken(null)
+    setChatOpen(false)
+  }
 
   function navigate(path: string) {
     window.history.pushState(null, '', path)
@@ -59,6 +74,8 @@ export default function App() {
     window.addEventListener('popstate', handler)
     return () => window.removeEventListener('popstate', handler)
   }, [])
+
+  if (!token) return <AuthPage onLogin={handleLogin} />
 
   if (page === 'admin') return <AdminPage onNavigate={navigate} />
 
@@ -91,6 +108,12 @@ export default function App() {
               className="text-sm font-medium text-[#1a1a2e] border border-gray-300 rounded-full px-5 py-2 hover:bg-gray-50 transition-colors"
             >
               View Demo
+            </button>
+            <button
+              onClick={handleLogout}
+              className="text-sm font-medium text-gray-400 hover:text-gray-700 transition-colors bg-transparent border-0 p-0 cursor-pointer"
+            >
+              Sign out
             </button>
           </div>
         </div>
@@ -212,7 +235,7 @@ export default function App() {
       </footer>
 
       {/* Chat widget lives at the page level */}
-      <ChatWidget open={chatOpen} onOpenChange={setChatOpen} />
+      <ChatWidget open={chatOpen} onOpenChange={setChatOpen} token={token!} onUnauthorized={handleLogout} />
     </div>
   )
 }
