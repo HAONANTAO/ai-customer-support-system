@@ -216,7 +216,7 @@ app.post('/api/chat', async (req, res) => {
 const frontendDist = path.join(__dirname, '../frontend/dist')
 app.use(express.static(frontendDist))
 // SPA fallback: serve index.html for any non-API route
-app.get('*', (_req, res) => {
+app.get('/{*path}', (_req, res) => {
   res.sendFile(path.join(frontendDist, 'index.html'))
 })
 
